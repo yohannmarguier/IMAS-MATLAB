@@ -26,6 +26,7 @@ endif()
 # Use full path since CMAKE_MODULE_PATH hasn't been configured yet
 include(${CMAKE_CURRENT_SOURCE_DIR}/common/cmake/ALLocalPaths.cmake)
 option( AL_DOWNLOAD_DEPENDENCIES "Automatically download assets from the AL git repository" ON )
+option( AL_USE_MULTIVERSION_SHIM "Route MATLAB Access Layer calls through IMAS-Multiversion-DD-Loader" OFF )
 set( AL_CORE_GIT_REPOSITORY "https://github.com/iterorganization/IMAS-Core.git" CACHE STRING "Git repository of AL-core" )
 set( AL_CORE_VERSION "main" CACHE STRING "Git commit/tag/branch of AL-core" )
 
@@ -110,6 +111,31 @@ include( ALBuildDataDictionary )
 # AL core, plugins and documentation
 include( ALCore )
 
+# Keep Core available for its headers and as the library the shim opens at run
+# time, but do not put it on a MEX link line: its mirrored C symbols would
+# bypass conversion. Both al-mex and each MEX target use this one selection.
+set( AL_MATLAB_CORE_TARGET al )
+set( AL_MATLAB_SHIM_TEST_ENVIRONMENT "" )
+if( AL_USE_MULTIVERSION_SHIM AND NOT AL_DOCS_ONLY )
+  find_package( imas-mvdd-loader REQUIRED CONFIG )
+  set( AL_MATLAB_CORE_TARGET imas-mvdd-loader::imas-mvdd-loader )
+  set( AL_MATLAB_SHIM_TEST_ENVIRONMENT "IMAS_MVDD_HLI_DD_VERSION=${DD_VERSION}" )
+
+  set( AL_CORE_RUNTIME_LIBRARY "" CACHE FILEPATH
+    "AL core shared library opened by the shim at run time; empty uses the Core built here" )
+  if( AL_CORE_RUNTIME_LIBRARY )
+    if( NOT EXISTS "${AL_CORE_RUNTIME_LIBRARY}" )
+      message( FATAL_ERROR "AL_CORE_RUNTIME_LIBRARY does not exist: ${AL_CORE_RUNTIME_LIBRARY}" )
+    endif()
+    list( APPEND AL_MATLAB_SHIM_TEST_ENVIRONMENT
+      "IMAS_CORE_LIBRARY=${AL_CORE_RUNTIME_LIBRARY}" )
+  elseif( AL_DOWNLOAD_DEPENDENCIES OR AL_DEVELOPMENT_LAYOUT )
+    list( APPEND AL_MATLAB_SHIM_TEST_ENVIRONMENT
+      "IMAS_CORE_LIBRARY=$<TARGET_FILE:al>" )
+  endif()
+  message( STATUS "MATLAB Access Layer calls use the multiversion shim (${imas-mvdd-loader_DIR})" )
+endif()
+
 # Stop processing when only building documentation
 if( AL_DOCS_ONLY )
   return()
@@ -136,7 +162,7 @@ if(WIN32)
   # This should be built as a shared library (not a MEX file) with name libal-mex.so/.dll
   # It's a utility library that MEX files link to, so use add_library instead of matlab_add_mex
   add_library( al-mex SHARED ${MEX_UTIL_SOURCES} )
-  target_link_libraries( al-mex PUBLIC al Matlab::mex Matlab::mx )
+  target_link_libraries( al-mex PUBLIC ${AL_MATLAB_CORE_TARGET} Matlab::mex Matlab::mx )
   target_include_directories( al-mex PRIVATE src )
   target_include_directories( al-mex PUBLIC ${Matlab_INCLUDE_DIRS} )
 
@@ -154,8 +180,17 @@ if(WIN32)
   set_target_properties(al-mex PROPERTIES LINKER_LANGUAGE C)
 else()
   # This should be built as a shared library with name libal-mex.so
-  matlab_add_mex( NAME al-mex SRC ${MEX_UTIL_SOURCES} SHARED LINK_TO al )
+  matlab_add_mex( NAME al-mex SRC ${MEX_UTIL_SOURCES} SHARED LINK_TO ${AL_MATLAB_CORE_TARGET} )
   target_include_directories( al-mex PRIVATE src )
+endif()
+if( AL_USE_MULTIVERSION_SHIM )
+  # The shim publishes its own header, not the IMAS-Core C ABI headers used by
+  # these sources. Export Core's include paths without its link interface.
+  target_include_directories( al-mex PUBLIC
+    "$<BUILD_INTERFACE:$<TARGET_PROPERTY:al,INTERFACE_INCLUDE_DIRECTORIES>>" )
+  if( AL_DOWNLOAD_DEPENDENCIES OR AL_DEVELOPMENT_LAYOUT )
+    add_dependencies( al-mex al )
+  endif()
 endif()
 
 set_target_properties( al-mex PROPERTIES
@@ -235,7 +270,7 @@ if(WIN32)
   macro( ADD_IMAS_MEX NAME SOURCES )
     # Let matlab_add_mex handle the suffix automatically
     # Or explicitly set .mexw64 if needed:
-    matlab_add_mex( NAME "mex-${NAME}" SRC ${SOURCES} LINK_TO al al-mex OUTPUT_NAME "${NAME}" )
+    matlab_add_mex( NAME "mex-${NAME}" SRC ${SOURCES} LINK_TO ${AL_MATLAB_CORE_TARGET} al-mex OUTPUT_NAME "${NAME}" )
     if(MATLAB_VERSION VERSION_GREATER_EQUAL "9.4")  # R2018a+
       set_target_properties("mex-${NAME}" PROPERTIES SUFFIX ".mexw64")
     endif()
@@ -253,7 +288,7 @@ if(WIN32)
 else()
   # Macro to add a mex target
   macro( ADD_IMAS_MEX NAME SOURCES )
-    matlab_add_mex( NAME "mex-${NAME}" SRC ${SOURCES} LINK_TO al al-mex OUTPUT_NAME "${NAME}" )
+    matlab_add_mex( NAME "mex-${NAME}" SRC ${SOURCES} LINK_TO ${AL_MATLAB_CORE_TARGET} al-mex OUTPUT_NAME "${NAME}" )
     target_include_directories( "mex-${NAME}" PRIVATE src )
     # Ensure all source-generation targets finish before this MEX target compiles.
     # Without this, parallel builds (cmake --build -j N) can race: the MEX target

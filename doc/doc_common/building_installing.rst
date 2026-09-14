@@ -217,6 +217,31 @@ MATLAB-specific configuration options
 
 The following options are specific to the MATLAB High Level Interface:
 
+- ``AL_USE_MULTIVERSION_SHIM``: Link the MATLAB MEX libraries to the
+  IMAS-Multiversion-DD-Loader C ABI instead of linking IMAS-Core directly
+  (default: ``OFF``). Install the shim first and provide its install prefix
+  with ``CMAKE_PREFIX_PATH`` or ``imas-mvdd-loader_DIR``. Core is still built
+  for headers and as the library the shim opens at run time.
+
+  .. code-block:: bash
+
+      cmake -B build --preset=https -DAL_USE_MULTIVERSION_SHIM=ON \
+          -DCMAKE_PREFIX_PATH=/path/to/IMAS-Multiversion-DD-Loader/install \
+          -DAL_BACKEND_HDF5=ON
+      cmake --build build --parallel
+      ctest --test-dir build --output-on-failure
+
+  The CTest registrations set ``IMAS_MVDD_HLI_DD_VERSION`` to the DD version
+  used to generate this HLI and ``IMAS_CORE_LIBRARY`` to the Core library
+  built in the same tree. When using an installed Core, or running MATLAB
+  outside CTest, set ``IMAS_CORE_LIBRARY`` to its shared-library path and
+  ``IMAS_MVDD_HLI_DD_VERSION`` to this HLI's generated DD version before
+  launching MATLAB, and make the shim's installed library discoverable by
+  the platform dynamic loader. ``AL_CORE_RUNTIME_LIBRARY`` can name a
+  different Core shared library for CTest. Conversion is currently available only for the
+  equilibrium 3.39.0/4.1.1 pair; see
+  ``docs/SHIM_INTEGRATION_CONTRACT.md`` for the exact behavior.
+
 - ``AL_CREATE_TOOLBOX``: Automatically create MATLAB toolbox package (``.mltbx``) during installation
   
   - **Default:** ``OFF``
@@ -323,4 +348,3 @@ Troubleshooting
 **Problem:** ``Target Boost::log already has an imported location``
     This problem is known to occur with the ``2020b`` toolchain on SDCC. Add the CMake
     configuration option ``-D Boost_NO_BOOST_CMAKE=ON`` to work around the problem.
-

@@ -19,6 +19,8 @@ cmake --install build
 
 The first command configures an HTTPS-based dependency checkout and enables the HDF5 test backend. The test command runs the CTest registrations, which invoke MATLAB's `runtests('imas_unit_tests')`. For documentation, use `ci/build_docs.sh` or configure with `-DAL_HLI_DOCS=ON -DAL_DOCS_ONLY=ON` and build the resulting tree. Do not commit build directories or generated local artifacts.
 
+For multiversion DD conversion, install IMAS-Multiversion-DD-Loader and configure with `-DAL_USE_MULTIVERSION_SHIM=ON` plus its prefix in `CMAKE_PREFIX_PATH` (or `imas-mvdd-loader_DIR`). The MATLAB MEX targets then link the shim while retaining IMAS-Core for headers and runtime loading. CTest sets `IMAS_MVDD_HLI_DD_VERSION` and `IMAS_CORE_LIBRARY`; set them explicitly when launching MATLAB outside CTest. `AL_CORE_RUNTIME_LIBRARY` overrides CTest's Core path. See `doc/doc_common/building_installing.rst` and `docs/SHIM_INTEGRATION_CONTRACT.md`.
+
 ## Coding Style & Naming Conventions
 
 Follow the surrounding file's formatting: MATLAB uses two-space indentation, `function` blocks, and lower-case underscore-separated API names such as `ids_get_slice`; C uses four-space indentation and lower-case underscore-separated filenames such as `imas_mex_utils.c`. Keep MATLAB help comments immediately above public functions and use established `IMAS:<component>:<condition>` error identifiers in MEX code. Prefer focused changes; preserve the generator/source relationship when changing IDS behavior.

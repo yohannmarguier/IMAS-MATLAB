@@ -24,6 +24,7 @@ add_test( NAME al-mex-test
 )
 # Note: added ids_path for backward compatibility with IMAS-Core<5.6
 set( MATLAB_ENV "IMAS_AL_DISABLE_VALIDATE=1;IMAS_AL_DISABLE_OBSOLESCENT_WARNING=1;ids_path=${MDSPLUS_MODEL_DIR};MDSPLUS_MODELS_PATH=${MDSPLUS_MODEL_DIR}" )
+list( APPEND MATLAB_ENV ${AL_MATLAB_SHIM_TEST_ENVIRONMENT} )
 if( AL_BACKEND_HDF5 )
   # The HDF5 library built-in with matlab may conflict with the one that the AL
   # was built against. Preload the AL-linked library:
@@ -37,6 +38,31 @@ set_tests_properties( al-mex-test PROPERTIES
   TIMEOUT 3600
   ENVIRONMENT "${MATLAB_ENV}"
 )
+
+if( AL_USE_MULTIVERSION_SHIM )
+  if( APPLE )
+    find_program( AL_SHIM_INSPECT_TOOL otool )
+    set( AL_SHIM_INSPECT_ARGS -L )
+  else()
+    find_program( AL_SHIM_INSPECT_TOOL readelf )
+    set( AL_SHIM_INSPECT_ARGS -d )
+    if( NOT AL_SHIM_INSPECT_TOOL AND CMAKE_OBJDUMP )
+      set( AL_SHIM_INSPECT_TOOL ${CMAKE_OBJDUMP} )
+      set( AL_SHIM_INSPECT_ARGS -p )
+    endif()
+  endif()
+  if( NOT AL_SHIM_INSPECT_TOOL )
+    message( FATAL_ERROR "A shared-library inspector (otool, readelf or objdump) is required for shim linkage tests" )
+  endif()
+  foreach( _target IN ITEMS al-mex mex-imas_open )
+    add_test( NAME ${_target}-shim-linkage
+      COMMAND ${CMAKE_COMMAND}
+        -DLIBRARY=$<TARGET_FILE:${_target}>
+        -DINSPECT_TOOL=${AL_SHIM_INSPECT_TOOL}
+        -DINSPECT_ARGS=${AL_SHIM_INSPECT_ARGS}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/shim/check_shim_linkage.cmake )
+  endforeach()
+endif()
 
 if( AL_PLUGINS )
   if( TARGET al-plugins )
@@ -77,4 +103,3 @@ else()
     message(STATUS "Tests will run with both HDF5 and MDSplus backends")
   endif()
 endif()
-

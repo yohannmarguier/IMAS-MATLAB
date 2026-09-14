@@ -29,7 +29,8 @@ function( set_al_example_properties TEST DISABLED USE_PLUGINS EXTRA_ENVIRONMENT 
   else()
     set( P_ENV ${EXAMPLE_ENVIRONMENT_WITHOUT_PLUGINS} )
   endif()
-  set_tests_properties( ${TEST} PROPERTIES ENVIRONMENT "${P_ENV};${EXTRA_ENVIRONMENT}" )
+  set_tests_properties( ${TEST} PROPERTIES
+    ENVIRONMENT "${P_ENV};${EXTRA_ENVIRONMENT};${AL_MATLAB_SHIM_TEST_ENVIRONMENT}" )
 
   # Set fixtures: put/put_slice must run before get/get_slice
   string( TOLOWER ${TEST} TEST_LOWER )
@@ -52,4 +53,3 @@ function( error_on_missing_tests SOURCE_EXTENSION TESTS )
     endif()
   endforeach()
 endfunction()
-

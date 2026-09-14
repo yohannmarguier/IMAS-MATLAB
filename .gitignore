@@ -18,3 +18,5 @@ test-install
 .vscode/
 *.err
 *.out
+/graphify-out
+/.idea

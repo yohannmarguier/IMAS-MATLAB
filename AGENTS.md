@@ -29,6 +29,8 @@ Follow the surrounding file's formatting: MATLAB uses two-space indentation, `fu
 
 Add coverage in the relevant `matlab.unittest.TestCase` class, using descriptive `test...` method names. Exercise both HDF5 and MDSplus only when the change is backend-specific; HDF5 is sufficient for the standard local path. Run the narrow MATLAB suite while iterating when the built libraries are on the path, then run CTest before opening a PR. Update examples or docs when public MATLAB behavior changes.
 
+`imas_utils_unit_tests` is registered as its own backend-independent CTest suite; it runs even when neither HDF5 nor MDSplus is configured.
+
 ## Commit & Pull Request Guidelines
 
 Recent history uses brief, imperative summaries (for example, `Fix warnings in windows`) and conventional prefixes for automation such as `ci:`. Use one focused change per commit; include the affected component when helpful. Start work from the latest `develop` branch, as required by `CONTRIBUTING.md`. PRs should describe the behavior change, link the agreed issue, list validation performed, and include MATLAB output or screenshots when they clarify a user-facing change.

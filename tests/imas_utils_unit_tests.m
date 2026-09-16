@@ -7,6 +7,14 @@ classdef imas_utils_unit_tests < matlab.unittest.TestCase
 
   %% Class-level setup
   methods (TestClassSetup)
+    function verifySkippedPathsAreInitiallyEmpty(TestCase)
+      skippedPaths = imas_get_skipped_paths;
+
+      TestCase.verifySize(skippedPaths, [0 0]);
+      TestCase.verifyEqual(fieldnames(skippedPaths), ...
+        {'operation'; 'path'; 'message'; 'code'});
+      TestCase.verifyEqual(imas_get_skipped_path_count, 0);
+    end
   end
 
   %% Test Method Parameters
@@ -17,6 +25,58 @@ classdef imas_utils_unit_tests < matlab.unittest.TestCase
 
   %% Test Method Block
   methods (Test)
+
+    function testZeroStatusDoesNotRecordASkippedPath(TestCase)
+      imas_test_inject_skipped_path(0, 'read', '', '');
+
+      skippedPaths = imas_get_skipped_paths;
+
+      TestCase.verifySize(skippedPaths, [0 0]);
+      TestCase.verifyEqual(imas_get_skipped_path_count, 0);
+    end
+
+    function testRefusalPolicyTruthTable(TestCase)
+      operations = {'read', 'write', 'delete'};
+      statuses = [0, -1, -2, -3, -4, -1000, -1050, -1099, -999, -1100];
+
+      for operationIndex = 1:numel(operations)
+        operation = operations{operationIndex};
+        for status = statuses
+          call = @() imas_test_inject_skipped_path(status, operation, 'a/b', 'shim refusal');
+          isRefusal = status >= -1099 && status <= -1000;
+
+          if (isRefusal)
+            TestCase.verifyWarning(call, ['IMAS:' operation ':refused']);
+          elseif (status < 0)
+            TestCase.verifyError(call, 'IMAS:imas_test_inject_skipped_path:internal_error');
+          else
+            call();
+          end
+
+          skippedPaths = imas_get_skipped_paths;
+          TestCase.verifyEqual(imas_get_skipped_path_count, numel(skippedPaths));
+          TestCase.verifyEqual(numel(skippedPaths), double(isRefusal));
+        end
+      end
+    end
+
+    function testSkippedPathRecordRoundTripsAndResets(TestCase)
+      imas_test_inject_skipped_path(-1050, 'write', 'equilibrium/time_slice', 'cannot convert this field');
+      skippedPaths = imas_get_skipped_paths;
+
+      TestCase.verifyEqual(imas_get_skipped_path_count, 1);
+      TestCase.verifyEqual(skippedPaths.operation, 'write');
+      TestCase.verifyEqual(skippedPaths.path, 'equilibrium/time_slice');
+      TestCase.verifyEqual(skippedPaths.message, 'cannot convert this field');
+      TestCase.verifyEqual(skippedPaths.code, -1050);
+
+      imas_test_inject_skipped_path(-1000, 'delete', 'equilibrium', 'cannot delete this field');
+      skippedPaths = imas_get_skipped_paths;
+
+      TestCase.verifyEqual(imas_get_skipped_path_count, 1);
+      TestCase.verifyEqual(skippedPaths.operation, 'delete');
+      TestCase.verifyEqual(skippedPaths.path, 'equilibrium');
+    end
 
     function rand(TestCase, IDSname, ntime)
       ids1 = ids_rand(IDSname, ntime, 0);

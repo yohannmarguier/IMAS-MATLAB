@@ -26,6 +26,17 @@ char mex_errmsgtxt[MAXERRMSGTXTSIZE];               /*!< Error message */
 int msglen = 0;                                     /*!< Length of the mex_errmsgtxt string */
 int msg_haspathinfo = 0;
 
+struct imas_mex_skipped_path {
+    char * operation;
+    char * path;
+    char * message;
+    int code;
+};
+
+static struct imas_mex_skipped_path * skippedPaths = NULL;
+static int skippedPathCount = 0;
+static int skippedPathCapacity = 0;
+
 
 #ifdef _WIN32
 	#include <process.h>  // For _getpid()
@@ -221,6 +232,121 @@ void resetErrMsgIdAndTxt(void)
 	mex_errmsgtxt[0] = '\000';
 	msglen = 0;
 	msg_haspathinfo = 0;
+}
+
+static char * duplicateString(const char * string)
+{
+    char * duplicate;
+    size_t length = strlen(string) + 1;
+
+    duplicate = mxMalloc(length);
+    memcpy(duplicate, string, length);
+    return duplicate;
+}
+
+void resetSkippedPaths(void)
+{
+    int index;
+
+    for (index = 0; index < skippedPathCount; index++) {
+        mxFree(skippedPaths[index].operation);
+        mxFree(skippedPaths[index].path);
+        mxFree(skippedPaths[index].message);
+    }
+    if (skippedPaths != NULL)
+        mxFree(skippedPaths);
+    skippedPaths = NULL;
+    skippedPathCount = 0;
+    skippedPathCapacity = 0;
+}
+
+static const char * operationName(enum imas_mex_operation operation)
+{
+    if (operation == IMAS_MEX_READ_OPERATION)
+        return "read";
+    if (operation == IMAS_MEX_WRITE_OPERATION)
+        return "write";
+    return "delete";
+}
+
+static void addSkippedPath(al_status_t status, enum imas_mex_operation operation,
+                           const char * path)
+{
+    struct imas_mex_skipped_path * resizedPaths;
+    struct imas_mex_skipped_path * skippedPath;
+
+    if (skippedPathCount == skippedPathCapacity) {
+        int newCapacity = skippedPathCapacity == 0 ? 8 : skippedPathCapacity * 2;
+        if (skippedPaths == NULL)
+            resizedPaths = mxMalloc(newCapacity * sizeof(struct imas_mex_skipped_path));
+        else
+            resizedPaths = mxRealloc(skippedPaths,
+                newCapacity * sizeof(struct imas_mex_skipped_path));
+        if (resizedPaths == NULL)
+            mexErrMsgIdAndTxt("IMAS:skipped_paths:allocation_failed",
+                              "Unable to record a refused path.");
+        skippedPaths = resizedPaths;
+        skippedPathCapacity = newCapacity;
+    }
+
+    skippedPath = &skippedPaths[skippedPathCount];
+    skippedPath->operation = duplicateString(operationName(operation));
+    skippedPath->path = duplicateString(path);
+    skippedPath->message = duplicateString(status.message);
+    skippedPath->code = status.code;
+    skippedPathCount++;
+}
+
+int tolerateRefusal(al_status_t status, enum imas_mex_operation operation,
+                    const char * path)
+{
+    const char * label;
+    const char * warningId;
+
+    if (status.code < -1099 || status.code > -1000)
+        return 0;
+
+    addSkippedPath(status, operation, path);
+    if (operation == IMAS_MEX_READ_OPERATION) {
+        label = "REFUSED READ";
+        warningId = "IMAS:read:refused";
+    } else if (operation == IMAS_MEX_WRITE_OPERATION) {
+        label = "REFUSED WRITE";
+        warningId = "IMAS:write:refused";
+    } else {
+        label = "REFUSED DELETE";
+        warningId = "IMAS:delete:refused";
+    }
+
+    mexWarnMsgIdAndTxt(warningId, "%s: %s (status %d): %s",
+                       label, path, status.code, status.message);
+    return 1;
+}
+
+int getSkippedPathCount(void)
+{
+    return skippedPathCount;
+}
+
+mxArray * getSkippedPaths(void)
+{
+    const char * fieldNames[] = {"operation", "path", "message", "code"};
+    mxArray * paths;
+    int index;
+
+    if (skippedPathCount == 0)
+        paths = mxCreateStructMatrix(0, 0, 4, fieldNames);
+    else
+        paths = mxCreateStructMatrix(skippedPathCount, 1, 4, fieldNames);
+
+    for (index = 0; index < skippedPathCount; index++) {
+        mxSetField(paths, index, "operation", mxCreateString(skippedPaths[index].operation));
+        mxSetField(paths, index, "path", mxCreateString(skippedPaths[index].path));
+        mxSetField(paths, index, "message", mxCreateString(skippedPaths[index].message));
+        mxSetField(paths, index, "code", mxCreateDoubleScalar((double) skippedPaths[index].code));
+    }
+
+    return paths;
 }
 
 /**

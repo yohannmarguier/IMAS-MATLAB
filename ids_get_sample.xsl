@@ -56,6 +56,7 @@
 void mexFunction(int nlhs, mxArray *plhs[],
                  int nrhs, const mxArray *prhs[])
 {
+  resetSkippedPaths();
   /* Check for two or three input arguments   */
   if(nrhs != 6 &amp;&amp; nrhs != 7) {
     mexErrMsgIdAndTxt("IMAS:ids_get_sample:nargin",

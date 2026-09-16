@@ -152,6 +152,25 @@ char * getFilenameFromPath(char *);
 
 void resetErrMsgIdAndTxt(void);
 
+enum imas_mex_operation {
+    IMAS_MEX_READ_OPERATION,
+    IMAS_MEX_WRITE_OPERATION,
+    IMAS_MEX_DELETE_OPERATION
+};
+
+/*
+   Process-global record of paths a multiversion shim refused during the root
+   read, write, or delete operation that just ran. See CONTEXT.md.
+ */
+void resetSkippedPaths(void);
+
+int tolerateRefusal(al_status_t status, enum imas_mex_operation operation,
+                    const char * path);
+
+int getSkippedPathCount(void);
+
+mxArray * getSkippedPaths(void);
+
 void my_mexErrMsgIdAndTxt(al_status_t status, const char * prefix);
 
 void my_validation_mexErrMsgIdAndTxt(al_validation_status_t status, const char * prefix);

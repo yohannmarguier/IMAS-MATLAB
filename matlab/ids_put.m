@@ -12,6 +12,11 @@
 %   The put method deletes any previously existing data within the target IDS
 %   occurrence in the Database Entry.
 %
+% When a multiversion Data Dictionary shim refuses an individual field, the
+% put can complete partially. MATLAB warns for every refused field; inspect
+% imas_get_skipped_paths or imas_get_skipped_path_count immediately afterwards.
+% There is no rollback: data deleted or written before a refusal remains changed.
+%
 % Args:
 %   expIdx:     Data entry context created with
 %               imas_open_uri, imas_open_env, imas_open_env_backend,

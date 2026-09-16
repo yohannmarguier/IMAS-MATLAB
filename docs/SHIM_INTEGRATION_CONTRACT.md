@@ -165,20 +165,16 @@ below).
 | Everything else | Written, exact, no loss entry. |
 
 **Torn-write hazard — required reading before writing a `put_slice`
-integration test.** IMAS-Fortran's generated `put`/`put_slice` routines have
-no rollback. A refusal partway through a slice (most likely: one of the 13
-`right_only` fields under `time_slice` that a DD4 caller fills and a DD3
-occurrence has no slot for) leaves **everything already written earlier in
-that same call on disk**, and the `time_slice` container one element longer
-regardless (the caller's own `al_begin_arraystruct_action` widened it before
-any leaf write ran, and Core commits that shape at end-action time no matter
-what happens after). Against an unmodified upstream IMAS-Fortran, **do not
-expect a clean all-or-nothing failure from a refused `put_slice`** — expect a
-torn slice plus a refusal. Only a patched IMAS-Fortran (tracked upstream as
-`yohannmarguier/IMAS-Fortran#61`, not yet merged as of this writing) tolerates
-the refusal field-by-field the way the read path already does via
-`al_get_policy`. This is a documented limitation of the shim, not a defect to
-chase — see README.md's "Scope and limitations".
+integration test.** The generated MATLAB `put`/`put_slice` routines tolerate a
+shim refusal only at a leaf write or an array-of-structures open. They warn and
+record each skipped HLI-DD path through `imas_get_skipped_paths`, then continue
+the traversal. There is no rollback: a refusal partway through a slice (most
+likely: one of the 13 `right_only` fields under `time_slice` that a DD4 caller
+fills and a DD3 occurrence has no slot for) leaves **everything already
+written earlier in that same call on disk**, and the `time_slice` container can
+already be one element longer. A refusal opening an array-of-structures skips
+that whole subtree. Callers must treat a successful return with skipped paths
+as a partial put, not an all-or-nothing write.
 
 **A refusal here can also crash the process, not just fail the call**, in one
 specific structural case unrelated to your own writes: IMAS-Core's own
@@ -198,7 +194,7 @@ Same registration gate as read/write. When registered:
 | `path` resolves to one stored path (identity, `renamed`, `moved`) | One `al_delete_data` call to Core with that stored spelling. |
 | `path` resolves to several candidates (`merged`/`split`) | **Every candidate is deleted**, unconditionally, with **no presence probe** beforehand. This is the opposite answer from write's precedence-1-only rule, and it is deliberate (ADR 0017): a write asserts a value it must not fabricate into an assumed-equivalent slot, but a delete asserts an absence, and leaving a stale candidate behind would let the read path's own fallback serve it as live data after a delete the caller was told succeeded. |
 | One or more candidates fail | **All candidates are still attempted** (no early exit); the **first** nonzero status is what's returned to the caller, after every candidate has been tried. An absent candidate is indistinguishable from a genuine backend failure at the ABI (`al_delete_data` has no not-found outcome), so a missing candidate can *look like* a failure even when the delete "worked" as well as it could. |
-| A delete refuses | One `UNMAPPABLE` `DELETE` loss records the caller's complete HLI-DD path before the ordinary refusal returns. |
+| A delete refuses | One `UNMAPPABLE` `DELETE` loss records the caller's complete HLI-DD path before the refusal reaches the HLI. The generated MATLAB traversal warns, records the skipped path, and continues at this leaf seam. |
 | A candidate plan completes | One `POTENTIALLY_LOSSY` `DELETE` loss records each stored candidate after all candidates have been attempted, including when the first failure is returned. |
 | `path` names a structure (not a leaf) whose subtree contains an **escaping rule** — a rule at or under `path` with at least one stored-side target outside the resolved stored subtree | **Refused**, before any candidate is touched. A leaf delete is always trivial (never refuses on this basis). On the shipped artifact this refuses `time_slice/boundary_separatrix` from a DD3 HLI and `time_slice/boundary` from a DD4 HLI, but allows `time_slice`, `time_slice/constraints`, and every leaf. |
 | `path` is empty | Forwards **unchanged**, unconditionally — this is IMAS-Core's own "delete the whole DATAOBJECT" contract. It is the *only* legitimate way to migrate a mismatched occurrence: afterwards the occurrence is unstamped, so ADR 0007 makes the next open treat it as matching the HLI, and it can be written fresh. It is also the sole exception to "any delete touching the stamp refuses" — because it removes the data too, nothing is left to misread. |

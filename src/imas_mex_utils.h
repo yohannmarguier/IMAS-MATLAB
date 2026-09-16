@@ -167,6 +167,11 @@ void resetSkippedPaths(void);
 int tolerateRefusal(al_status_t status, enum imas_mex_operation operation,
                     const char * path);
 
+int tolerateRefusalWithConsequence(al_status_t status,
+                                   enum imas_mex_operation operation,
+                                   const char * path,
+                                   const char * consequence);
+
 int getSkippedPathCount(void);
 
 mxArray * getSkippedPaths(void);

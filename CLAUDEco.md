@@ -36,8 +36,10 @@ Add coverage in the relevant `matlab.unittest.TestCase` class, using descriptive
 The shared MEX utility library owns the process-global skipped-path record and
 the refusal-band (`-1000..-1099`) tolerance chokepoint. Keep the record
 observable only through `imas_get_skipped_paths` and
-`imas_get_skipped_path_count`; generated traversal integration is deliberately
-deferred. Root read, write, and delete generators clear the record on entry.
+`imas_get_skipped_path_count`. Generated read traversal routes only leaf data
+reads and array-of-structures opens through the chokepoint: a tolerated leaf
+receives its default value and a tolerated array open becomes empty. Root read,
+write, and delete generators clear the record on entry.
 
 ## Commit & Pull Request Guidelines
 

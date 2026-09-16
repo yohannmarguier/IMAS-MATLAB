@@ -82,6 +82,33 @@ classdef imas_unit_tests < matlab.unittest.TestCase
         comparator(sdi,sdi_slice,IDSname);
       end	
     end
+
+    function testReadEntryPointsClearSkippedPaths(testCase)
+      idx = testCase.TestData.idx;
+      ids = testCase.TestData.IDS.equilibrium;
+      ids_put(idx, 'equilibrium', ids);
+
+      testCase.verifyWarning(@() imas_test_inject_skipped_path( ...
+        -1000, 'read', 'previous/path', 'previous refusal'), 'IMAS:read:refused');
+      fullIds = ids_get(idx, 'equilibrium');
+      testCase.verifyEqual(imas_get_skipped_path_count, 0);
+
+      testCase.verifyWarning(@() imas_test_inject_skipped_path( ...
+        -1000, 'read', 'previous/path', 'previous refusal'), 'IMAS:read:refused');
+      ids_get_slice(idx, 'equilibrium', ids.time(2), 1);
+      testCase.verifyEqual(imas_get_skipped_path_count, 0);
+
+      testCase.verifyWarning(@() imas_test_inject_skipped_path( ...
+        -1000, 'read', 'previous/path', 'previous refusal'), 'IMAS:read:refused');
+      ids_get_sample(idx, 'equilibrium', ids.time(1), ids.time(end), [], 0);
+      testCase.verifyEqual(imas_get_skipped_path_count, 0);
+
+      testCase.verifyTrue(ids_isdefined(fullIds));
+      if ~ispc
+        ids_validate('equilibrium', fullIds);
+      end
+      ids_put(idx, 'equilibrium', fullIds);
+    end
     
     function testPutSlice(testCase, IDSname)
       idx = testCase.TestData.idx;

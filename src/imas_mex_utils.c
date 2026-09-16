@@ -300,6 +300,14 @@ static void addSkippedPath(al_status_t status, enum imas_mex_operation operation
 int tolerateRefusal(al_status_t status, enum imas_mex_operation operation,
                     const char * path)
 {
+    return tolerateRefusalWithConsequence(status, operation, path, NULL);
+}
+
+int tolerateRefusalWithConsequence(al_status_t status,
+                                   enum imas_mex_operation operation,
+                                   const char * path,
+                                   const char * consequence)
+{
     const char * label;
     const char * warningId;
 
@@ -318,8 +326,13 @@ int tolerateRefusal(al_status_t status, enum imas_mex_operation operation,
         warningId = "IMAS:delete:refused";
     }
 
-    mexWarnMsgIdAndTxt(warningId, "%s: %s (status %d): %s",
-                       label, path, status.code, status.message);
+    if (consequence == NULL)
+        mexWarnMsgIdAndTxt(warningId, "%s: %s (status %d): %s",
+                           label, path, status.code, status.message);
+    else
+        mexWarnMsgIdAndTxt(warningId, "%s: %s (status %d): %s; %s",
+                           label, path, status.code, status.message,
+                           consequence);
     return 1;
 }
 

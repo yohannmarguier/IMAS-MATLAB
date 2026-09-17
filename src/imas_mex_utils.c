@@ -234,12 +234,23 @@ void resetErrMsgIdAndTxt(void)
 	msg_haspathinfo = 0;
 }
 
+/*
+   Copies a string into memory the record owns.
+
+   The record outlives the MEX function that wrote it: one entry point records a
+   refusal, and a later, separate MEX call reads it back. MATLAB frees mxMalloc
+   memory as soon as the allocating MEX function returns, so the record holds
+   plain heap memory instead.
+ */
 static char * duplicateString(const char * string)
 {
     char * duplicate;
     size_t length = strlen(string) + 1;
 
-    duplicate = mxMalloc(length);
+    duplicate = malloc(length);
+    if (duplicate == NULL)
+        mexErrMsgIdAndTxt("IMAS:skipped_paths:allocation_failed",
+                          "Unable to record a refused path.");
     memcpy(duplicate, string, length);
     return duplicate;
 }
@@ -249,12 +260,11 @@ void resetSkippedPaths(void)
     int index;
 
     for (index = 0; index < skippedPathCount; index++) {
-        mxFree(skippedPaths[index].operation);
-        mxFree(skippedPaths[index].path);
-        mxFree(skippedPaths[index].message);
+        free(skippedPaths[index].operation);
+        free(skippedPaths[index].path);
+        free(skippedPaths[index].message);
     }
-    if (skippedPaths != NULL)
-        mxFree(skippedPaths);
+    free(skippedPaths);
     skippedPaths = NULL;
     skippedPathCount = 0;
     skippedPathCapacity = 0;
@@ -277,11 +287,8 @@ static void addSkippedPath(al_status_t status, enum imas_mex_operation operation
 
     if (skippedPathCount == skippedPathCapacity) {
         int newCapacity = skippedPathCapacity == 0 ? 8 : skippedPathCapacity * 2;
-        if (skippedPaths == NULL)
-            resizedPaths = mxMalloc(newCapacity * sizeof(struct imas_mex_skipped_path));
-        else
-            resizedPaths = mxRealloc(skippedPaths,
-                newCapacity * sizeof(struct imas_mex_skipped_path));
+        resizedPaths = realloc(skippedPaths,
+            newCapacity * sizeof(struct imas_mex_skipped_path));
         if (resizedPaths == NULL)
             mexErrMsgIdAndTxt("IMAS:skipped_paths:allocation_failed",
                               "Unable to record a refused path.");

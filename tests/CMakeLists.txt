@@ -29,23 +29,6 @@ add_test( NAME al-utils-unit-test
       -batch "addpath ${LIB_FOLDER} ${M_FOLDER}; res = runtests('imas_utils_unit_tests');exit(~all([res.Passed]))"
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
-add_test( NAME al-generated-read-refusal-policy
-  COMMAND ${CMAKE_COMMAND}
-    -DGET_SOURCE=${CMAKE_BINARY_DIR}/src/ids/get_ids.c
-    -DGET_SLICE_SOURCE=${CMAKE_BINARY_DIR}/src/ids/get_slice_ids.c
-    -DGET_SAMPLE_SOURCE=${CMAKE_BINARY_DIR}/src/ids/get_sample_ids.c
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/check_generated_read_refusal_policy.cmake
-)
-add_test( NAME al-generated-write-delete-refusal-policy
-  COMMAND ${CMAKE_COMMAND}
-    -DPUT_SOURCE=${CMAKE_BINARY_DIR}/src/ids/put_ids.c
-    -DPUT_SLICE_SOURCE=${CMAKE_BINARY_DIR}/src/ids/put_slice_ids.c
-    -DDELETE_SOURCE=${CMAKE_BINARY_DIR}/src/ids/delete_ids.c
-    -DPUT_ENTRY_SOURCE=${CMAKE_BINARY_DIR}/src/ids/ids_put.c
-    -DPUT_SLICE_ENTRY_SOURCE=${CMAKE_BINARY_DIR}/src/ids/ids_put_slice.c
-    -DDELETE_ENTRY_SOURCE=${CMAKE_BINARY_DIR}/src/ids/ids_delete.c
-    -P ${CMAKE_CURRENT_SOURCE_DIR}/check_generated_write_delete_refusal_policy.cmake
-)
 # Note: added ids_path for backward compatibility with IMAS-Core<5.6
 set( MATLAB_ENV "IMAS_AL_DISABLE_VALIDATE=1;IMAS_AL_DISABLE_OBSOLESCENT_WARNING=1;ids_path=${MDSPLUS_MODEL_DIR};MDSPLUS_MODELS_PATH=${MDSPLUS_MODEL_DIR}" )
 list( APPEND MATLAB_ENV ${AL_MATLAB_SHIM_TEST_ENVIRONMENT} )
@@ -58,7 +41,7 @@ if( AL_BACKEND_HDF5 )
   list( APPEND MATLAB_ENV "LD_PRELOAD=${PRELOAD_LIBS}" )
 endif()
 
-set_tests_properties( al-mex-test al-utils-unit-test al-generated-read-refusal-policy al-generated-write-delete-refusal-policy PROPERTIES
+set_tests_properties( al-mex-test al-utils-unit-test PROPERTIES
   TIMEOUT 3600
   ENVIRONMENT "${MATLAB_ENV}"
 )

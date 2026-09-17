@@ -165,16 +165,27 @@ below).
 | Everything else | Written, exact, no loss entry. |
 
 **Torn-write hazard — required reading before writing a `put_slice`
-integration test.** The generated MATLAB `put`/`put_slice` routines tolerate a
-shim refusal only at a leaf write or an array-of-structures open. They warn and
-record each skipped HLI-DD path through `imas_get_skipped_paths`, then continue
-the traversal. There is no rollback: a refusal partway through a slice (most
-likely: one of the 13 `right_only` fields under `time_slice` that a DD4 caller
-fills and a DD3 occurrence has no slot for) leaves **everything already
-written earlier in that same call on disk**, and the `time_slice` container can
-already be one element longer. A refusal opening an array-of-structures skips
-that whole subtree. Callers must treat a successful return with skipped paths
-as a partial put, not an all-or-nothing write.
+integration test.** IMAS-Fortran's generated `put`/`put_slice` routines have
+no rollback. A refusal partway through a slice (most likely: one of the 13
+`right_only` fields under `time_slice` that a DD4 caller fills and a DD3
+occurrence has no slot for) leaves **everything already written earlier in
+that same call on disk**, and the `time_slice` container one element longer
+regardless (the caller's own `al_begin_arraystruct_action` widened it before
+any leaf write ran, and Core commits that shape at end-action time no matter
+what happens after). Against an unmodified upstream IMAS-Fortran, **do not
+expect a clean all-or-nothing failure from a refused `put_slice`** — expect a
+torn slice plus a refusal. Only a patched IMAS-Fortran (tracked upstream as
+`yohannmarguier/IMAS-Fortran#61`, not yet merged as of this writing) tolerates
+the refusal field-by-field the way the read path already does via
+`al_get_policy`. This is a documented limitation of the shim, not a defect to
+chase — see README.md's "Scope and limitations".
+
+The generated MATLAB `put`/`put_slice` routines do tolerate a refusal
+field-by-field, at a leaf write and at an array-of-structures open: they warn,
+record each skipped HLI-DD path for `imas_get_skipped_paths`, and continue the
+traversal. That changes which fields survive, not the torn-write hazard — there
+is no rollback in MATLAB either, so a caller must treat a successful return
+with skipped paths as a partial put rather than an all-or-nothing write.
 
 **A refusal here can also crash the process, not just fail the call**, in one
 specific structural case unrelated to your own writes: IMAS-Core's own

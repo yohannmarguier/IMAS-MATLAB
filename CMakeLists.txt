@@ -362,9 +362,9 @@ set( TARGETS
   imas_create_env_backend
   imas_deserialize
   imas_get_backendID
+  imas_get_mex_params
   imas_get_skipped_path_count
   imas_get_skipped_paths
-  imas_get_mex_params
   imas_open
   imas_open_env
   imas_open_env_backend

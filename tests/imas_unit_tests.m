@@ -100,26 +100,41 @@ classdef imas_unit_tests < matlab.unittest.TestCase
       ids = testCase.TestData.IDS.equilibrium;
       ids_put(idx, 'equilibrium', ids);
 
-      testCase.verifyWarning(@() imas_test_inject_skipped_path( ...
-        -1000, 'read', 'previous/path', 'previous refusal'), 'IMAS:read:refused');
-      fullIds = ids_get(idx, 'equilibrium');
+      testCase.injectPreviousRefusal('read');
+      ids_get(idx, 'equilibrium');
       testCase.verifyEqual(imas_get_skipped_path_count, 0);
 
-      testCase.verifyWarning(@() imas_test_inject_skipped_path( ...
-        -1000, 'read', 'previous/path', 'previous refusal'), 'IMAS:read:refused');
+      testCase.injectPreviousRefusal('read');
       ids_get_slice(idx, 'equilibrium', ids.time(2), 1);
       testCase.verifyEqual(imas_get_skipped_path_count, 0);
 
-      testCase.verifyWarning(@() imas_test_inject_skipped_path( ...
-        -1000, 'read', 'previous/path', 'previous refusal'), 'IMAS:read:refused');
+      testCase.injectPreviousRefusal('read');
       ids_get_sample(idx, 'equilibrium', ids.time(1), ids.time(end), [], 0);
       testCase.verifyEqual(imas_get_skipped_path_count, 0);
+    end
+
+    function testReadIsUsableDownstreamWhileSkippedPathsAreRecorded(testCase)
+      % Manufacturing a genuinely partial read needs a multiversion shim and an
+      % occurrence stored under another DD version, neither of which this suite
+      % can build; that acceptance belongs to the conformance suite. What is
+      % observable here is that a non-empty record does not get in the way of
+      % the calls a caller reaches for next, and that only a root operation
+      % clears it.
+      idx = testCase.TestData.idx;
+      ids = testCase.TestData.IDS.equilibrium;
+      ids_put(idx, 'equilibrium', ids);
+      fullIds = ids_get(idx, 'equilibrium');
+
+      testCase.injectPreviousRefusal('read');
 
       testCase.verifyTrue(ids_isdefined(fullIds));
       if ~ispc
         ids_validate('equilibrium', fullIds);
       end
+      testCase.verifyEqual(imas_get_skipped_path_count, 1);
+
       ids_put(idx, 'equilibrium', fullIds);
+      testCase.verifyEqual(imas_get_skipped_path_count, 0);
     end
     
     function testWriteEntryPointsClearSkippedPaths(testCase)

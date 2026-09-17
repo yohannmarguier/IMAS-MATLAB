@@ -171,6 +171,12 @@ enum imas_mex_operation {
  */
 void resetSkippedPaths(void);
 
+/*
+   Resolves the MATLAB spelling of an operation tag to its enum value. Returns 1
+   on a match, 0 otherwise.
+ */
+int operationFromName(const char * name, enum imas_mex_operation * operation);
+
 int tolerateRefusal(al_status_t status, enum imas_mex_operation operation,
                     const char * path);
 

@@ -24,13 +24,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     operation = mxArrayToString(prhs[1]);
     path = mxArrayToString(prhs[2]);
     message = mxArrayToString(prhs[3]);
-    if (strcmp(operation, "read") == 0)
-        operationType = IMAS_MEX_READ_OPERATION;
-    else if (strcmp(operation, "write") == 0)
-        operationType = IMAS_MEX_WRITE_OPERATION;
-    else if (strcmp(operation, "delete") == 0)
-        operationType = IMAS_MEX_DELETE_OPERATION;
-    else
+    if (!operationFromName(operation, &operationType))
         mexErrMsgIdAndTxt("IMAS:imas_test_inject_skipped_path:invalid_operation",
                           "Operation must be read, write, or delete.");
 

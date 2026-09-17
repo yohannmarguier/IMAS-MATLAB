@@ -270,13 +270,48 @@ void resetSkippedPaths(void)
     skippedPathCapacity = 0;
 }
 
-static const char * operationName(enum imas_mex_operation operation)
+/*
+   Everything the record and the warning need to say about one operation, in one
+   place: the tag stored in the record, the REFUSED spelling shared with
+   IMAS-Fortran and IMAS-Cpp, and the warning identifier callers filter on.
+ */
+struct imas_mex_operation_description {
+    enum imas_mex_operation operation;
+    const char * name;
+    const char * label;
+    const char * warningId;
+};
+
+static const struct imas_mex_operation_description operationDescriptions[] = {
+    {IMAS_MEX_READ_OPERATION,   "read",   "REFUSED READ",   "IMAS:read:refused"},
+    {IMAS_MEX_WRITE_OPERATION,  "write",  "REFUSED WRITE",  "IMAS:write:refused"},
+    {IMAS_MEX_DELETE_OPERATION, "delete", "REFUSED DELETE", "IMAS:delete:refused"}
+};
+
+static const size_t operationCount =
+    sizeof(operationDescriptions) / sizeof(operationDescriptions[0]);
+
+static const struct imas_mex_operation_description * describeOperation(
+    enum imas_mex_operation operation)
 {
-    if (operation == IMAS_MEX_READ_OPERATION)
-        return "read";
-    if (operation == IMAS_MEX_WRITE_OPERATION)
-        return "write";
-    return "delete";
+    size_t index;
+
+    for (index = 0; index < operationCount; index++)
+        if (operationDescriptions[index].operation == operation)
+            return &operationDescriptions[index];
+    return &operationDescriptions[0];
+}
+
+int operationFromName(const char * name, enum imas_mex_operation * operation)
+{
+    size_t index;
+
+    for (index = 0; index < operationCount; index++)
+        if (strcmp(operationDescriptions[index].name, name) == 0) {
+            *operation = operationDescriptions[index].operation;
+            return 1;
+        }
+    return 0;
 }
 
 static void addSkippedPath(al_status_t status, enum imas_mex_operation operation,
@@ -297,7 +332,7 @@ static void addSkippedPath(al_status_t status, enum imas_mex_operation operation
     }
 
     skippedPath = &skippedPaths[skippedPathCount];
-    skippedPath->operation = duplicateString(operationName(operation));
+    skippedPath->operation = duplicateString(describeOperation(operation)->name);
     skippedPath->path = duplicateString(path);
     skippedPath->message = duplicateString(status.message);
     skippedPath->code = status.code;
@@ -315,32 +350,23 @@ int tolerateRefusalWithConsequence(al_status_t status,
                                    const char * path,
                                    const char * consequence)
 {
-    const char * label;
-    const char * warningId;
+    const struct imas_mex_operation_description * description;
 
     if (status.code < IMAS_MEX_REFUSAL_BAND_MIN ||
         status.code > IMAS_MEX_REFUSAL_BAND_MAX)
         return 0;
 
     addSkippedPath(status, operation, path);
-    if (operation == IMAS_MEX_READ_OPERATION) {
-        label = "REFUSED READ";
-        warningId = "IMAS:read:refused";
-    } else if (operation == IMAS_MEX_WRITE_OPERATION) {
-        label = "REFUSED WRITE";
-        warningId = "IMAS:write:refused";
-    } else {
-        label = "REFUSED DELETE";
-        warningId = "IMAS:delete:refused";
-    }
+    description = describeOperation(operation);
 
     if (consequence == NULL)
-        mexWarnMsgIdAndTxt(warningId, "%s: %s (status %d): %s",
-                           label, path, status.code, status.message);
+        mexWarnMsgIdAndTxt(description->warningId, "%s: %s (status %d): %s",
+                           description->label, path, status.code,
+                           status.message);
     else
-        mexWarnMsgIdAndTxt(warningId, "%s: %s (status %d): %s; %s",
-                           label, path, status.code, status.message,
-                           consequence);
+        mexWarnMsgIdAndTxt(description->warningId, "%s: %s (status %d): %s; %s",
+                           description->label, path, status.code,
+                           status.message, consequence);
     return 1;
 }
 

@@ -140,10 +140,10 @@
     field.datatype = <xsl:value-of select="my:get_datatype(@data_type)"/>;
     field.dim = <xsl:value-of select="my:get_dim(@data_type)"/>;
     status = my_al_write_data(&amp;action, &amp;field, data, idsFullName, "<xsl:value-of select="@lifecycle_status"/>");
-    }
     if (status.code &lt; 0 &amp;&amp; tolerateRefusal(status, IMAS_MEX_WRITE_OPERATION, field.fieldPath)) {
       status.code = 0;
       status.message[0] = '\0';
+    }
     }
     <xsl:if test="starts-with(@path,'ids_properties/version_put/')">
       mxDestroyArray((mxArray *) data);

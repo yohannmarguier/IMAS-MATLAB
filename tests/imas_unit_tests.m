@@ -59,6 +59,18 @@ classdef imas_unit_tests < matlab.unittest.TestCase
     IDSname = IDS_list.';
   end
 
+  methods (Access = private)
+    % Leave a skipped path behind from a notional earlier operation. An entry
+    % point that clears the record on its own entry wipes it; one that does not
+    % reports a previous operation's skips as its own.
+    function injectPreviousRefusal(testCase, operation)
+      testCase.verifyWarning(@() imas_test_inject_skipped_path( ...
+        -1000, operation, 'previous/path', 'previous refusal'), ...
+        ['IMAS:' operation ':refused']);
+      testCase.verifyEqual(imas_get_skipped_path_count, 1);
+    end
+  end
+
   %% Test Method Block
   methods (Test)
 
@@ -110,6 +122,27 @@ classdef imas_unit_tests < matlab.unittest.TestCase
       ids_put(idx, 'equilibrium', fullIds);
     end
     
+    function testWriteEntryPointsClearSkippedPaths(testCase)
+      % Whether ids_put's delete and write phases share one record, and whether
+      % each phase's skips carry the right operation tag, needs a shim that
+      % actually refuses; that is the conformance suite's job. What is
+      % observable here is the clear-on-entry half of the contract.
+      idx = testCase.TestData.idx;
+      ids_slice = testCase.TestData.IDS_slice.equilibrium;
+
+      testCase.injectPreviousRefusal('write');
+      ids_put(idx, 'equilibrium', ids_slice{1});
+      testCase.verifyEqual(imas_get_skipped_path_count, 0);
+
+      testCase.injectPreviousRefusal('write');
+      ids_put_slice(idx, 'equilibrium', ids_slice{2});
+      testCase.verifyEqual(imas_get_skipped_path_count, 0);
+
+      testCase.injectPreviousRefusal('delete');
+      ids_delete(idx, 'equilibrium');
+      testCase.verifyEqual(imas_get_skipped_path_count, 0);
+    end
+
     function testPutSlice(testCase, IDSname)
       idx = testCase.TestData.idx;
       ids = testCase.TestData.IDS.(IDSname);

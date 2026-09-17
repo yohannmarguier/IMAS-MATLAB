@@ -159,6 +159,13 @@ enum imas_mex_operation {
 };
 
 /*
+   The refusal band: the status codes a multiversion shim uses to decline a
+   path it cannot convert. Disjoint from IMAS-Core's own -1..-4. See CONTEXT.md.
+ */
+#define IMAS_MEX_REFUSAL_BAND_MIN (-1099)
+#define IMAS_MEX_REFUSAL_BAND_MAX (-1000)
+
+/*
    Process-global record of paths a multiversion shim refused during the root
    read, write, or delete operation that just ran. See CONTEXT.md.
  */

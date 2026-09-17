@@ -318,7 +318,8 @@ int tolerateRefusalWithConsequence(al_status_t status,
     const char * label;
     const char * warningId;
 
-    if (status.code < -1099 || status.code > -1000)
+    if (status.code < IMAS_MEX_REFUSAL_BAND_MIN ||
+        status.code > IMAS_MEX_REFUSAL_BAND_MAX)
         return 0;
 
     addSkippedPath(status, operation, path);

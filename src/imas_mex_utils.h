@@ -177,10 +177,16 @@ void resetSkippedPaths(void);
  */
 int operationFromName(const char * name, enum imas_mex_operation * operation);
 
-int tolerateRefusal(al_status_t status, enum imas_mex_operation operation,
+/*
+   Decides whether a non-zero status at one field is fatal or tolerable. A status
+   in the refusal band is recorded, warned about, and cleared from *status so the
+   traversal can carry on; 1 is returned. Any other status is left untouched and
+   0 is returned, so the caller's existing fatal handling runs.
+ */
+int tolerateRefusal(al_status_t * status, enum imas_mex_operation operation,
                     const char * path);
 
-int tolerateRefusalWithConsequence(al_status_t status,
+int tolerateRefusalWithConsequence(al_status_t * status,
                                    enum imas_mex_operation operation,
                                    const char * path,
                                    const char * consequence);

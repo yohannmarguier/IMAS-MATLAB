@@ -57,9 +57,7 @@
       if (status.code >= 0) {
         status = al_begin_arraystruct_action(ctx, field.fieldPath, field.timebasePath, &amp;aosArraySize, &amp;aosCtx);
 
-        if (status.code &lt; 0 &amp;&amp; tolerateRefusalWithConsequence(status, IMAS_MEX_WRITE_OPERATION, field.fieldPath, "array of structures subtree was not written")) {
-          status.code = 0;
-          status.message[0] = '\0';
+        if (status.code &lt; 0 &amp;&amp; tolerateRefusalWithConsequence(&amp;status, IMAS_MEX_WRITE_OPERATION, field.fieldPath, "array of structures subtree was not written")) {
           aosArraySize = 0; <!-- aosCtx is left alone so a context the refused open had already allocated is still ended below -->
         }
 
@@ -139,10 +137,7 @@
     field.datatype = <xsl:value-of select="my:get_datatype(@data_type)"/>;
     field.dim = <xsl:value-of select="my:get_dim(@data_type)"/>;
     status = my_al_write_data(&amp;action, &amp;field, data, idsFullName, "<xsl:value-of select="@lifecycle_status"/>");
-    if (status.code &lt; 0 &amp;&amp; tolerateRefusal(status, IMAS_MEX_WRITE_OPERATION, field.fieldPath)) {
-      status.code = 0;
-      status.message[0] = '\0';
-    }
+    if (status.code &lt; 0) tolerateRefusal(&amp;status, IMAS_MEX_WRITE_OPERATION, field.fieldPath);
     }
     <xsl:if test="starts-with(@path,'ids_properties/version_put/')">
       mxDestroyArray((mxArray *) data);

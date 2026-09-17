@@ -339,34 +339,39 @@ static void addSkippedPath(al_status_t status, enum imas_mex_operation operation
     skippedPathCount++;
 }
 
-int tolerateRefusal(al_status_t status, enum imas_mex_operation operation,
+int tolerateRefusal(al_status_t * status, enum imas_mex_operation operation,
                     const char * path)
 {
     return tolerateRefusalWithConsequence(status, operation, path, NULL);
 }
 
-int tolerateRefusalWithConsequence(al_status_t status,
+int tolerateRefusalWithConsequence(al_status_t * status,
                                    enum imas_mex_operation operation,
                                    const char * path,
                                    const char * consequence)
 {
     const struct imas_mex_operation_description * description;
 
-    if (status.code < IMAS_MEX_REFUSAL_BAND_MIN ||
-        status.code > IMAS_MEX_REFUSAL_BAND_MAX)
+    if (status->code < IMAS_MEX_REFUSAL_BAND_MIN ||
+        status->code > IMAS_MEX_REFUSAL_BAND_MAX)
         return 0;
 
-    addSkippedPath(status, operation, path);
+    addSkippedPath(*status, operation, path);
     description = describeOperation(operation);
 
     if (consequence == NULL)
         mexWarnMsgIdAndTxt(description->warningId, "%s: %s (status %d): %s",
-                           description->label, path, status.code,
-                           status.message);
+                           description->label, path, status->code,
+                           status->message);
     else
         mexWarnMsgIdAndTxt(description->warningId, "%s: %s (status %d): %s; %s",
-                           description->label, path, status.code,
-                           status.message, consequence);
+                           description->label, path, status->code,
+                           status->message, consequence);
+
+    /* The traversal carries on from a clean status; the accumulating
+       error-message buffer is deliberately left untouched. */
+    status->code = 0;
+    status->message[0] = '\0';
     return 1;
 }
 

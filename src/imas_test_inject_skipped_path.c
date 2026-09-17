@@ -34,7 +34,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     strncpy(status.message, message, MAX_ERR_MSG_LEN - 1);
     status.message[MAX_ERR_MSG_LEN - 1] = '\0';
 
-    if (tolerateRefusal(status, operationType, path)) {
+    if (tolerateRefusal(&status, operationType, path)) {
         mxFree(operation);
         mxFree(path);
         mxFree(message);

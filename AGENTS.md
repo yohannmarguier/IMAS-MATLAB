@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-Any changes should be also reflected in CLAUDEco.md
+Any changes should be also reflected in CLAUDE.md
 
 ## Project Structure & Module Organization
 

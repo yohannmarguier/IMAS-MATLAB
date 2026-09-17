@@ -55,7 +55,6 @@
 void mexFunction(int nlhs, mxArray *plhs[],
                  int nrhs, const mxArray *prhs[])
 {
-  resetSkippedPaths();
   /* Check for two or three input arguments   */
   if(nrhs != 3 &amp;&amp; nrhs != 2) {
     mexErrMsgIdAndTxt("IMAS:ids_delete:nargin",
@@ -123,8 +122,9 @@ void mexFunction(int nlhs, mxArray *plhs[],
   mexErrMsgIdAndTxt("IMAS:ids_delete:unknown_ids",
            "Unknown IDS name: %s", name);
 
-  /* Clean-up previous errors */
+  /* Clean-up previous errors and the previous operation's skipped paths */
   resetErrMsgIdAndTxt();
+  resetSkippedPaths();
   /* Call function */
   al_status_t err = ids_delete(idx, IDSpath);
   plhs[0] = mxCreateNumericMatrix(1, 1, mxINT32_CLASS, mxREAL);

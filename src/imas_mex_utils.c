@@ -26,6 +26,17 @@ char mex_errmsgtxt[MAXERRMSGTXTSIZE];               /*!< Error message */
 int msglen = 0;                                     /*!< Length of the mex_errmsgtxt string */
 int msg_haspathinfo = 0;
 
+struct imas_mex_skipped_path {
+    char * operation;
+    char * path;
+    char * message;
+    int code;
+};
+
+static struct imas_mex_skipped_path * skippedPaths = NULL;
+static int skippedPathCount = 0;
+static int skippedPathCapacity = 0;
+
 
 #ifdef _WIN32
 	#include <process.h>  // For _getpid()
@@ -221,6 +232,173 @@ void resetErrMsgIdAndTxt(void)
 	mex_errmsgtxt[0] = '\000';
 	msglen = 0;
 	msg_haspathinfo = 0;
+}
+
+/*
+   Copies a string into memory the record owns.
+
+   The record outlives the MEX function that wrote it: one entry point records a
+   refusal, and a later, separate MEX call reads it back. MATLAB frees mxMalloc
+   memory as soon as the allocating MEX function returns, so the record holds
+   plain heap memory instead.
+ */
+static char * duplicateString(const char * string)
+{
+    char * duplicate;
+    size_t length = strlen(string) + 1;
+
+    duplicate = malloc(length);
+    if (duplicate == NULL)
+        mexErrMsgIdAndTxt("IMAS:imas_mex_utils:allocation_failed",
+                          "Unable to record a refused path.");
+    memcpy(duplicate, string, length);
+    return duplicate;
+}
+
+void resetSkippedPaths(void)
+{
+    int index;
+
+    for (index = 0; index < skippedPathCount; index++) {
+        free(skippedPaths[index].operation);
+        free(skippedPaths[index].path);
+        free(skippedPaths[index].message);
+    }
+    free(skippedPaths);
+    skippedPaths = NULL;
+    skippedPathCount = 0;
+    skippedPathCapacity = 0;
+}
+
+/*
+   Everything the record and the warning need to say about one operation, in one
+   place: the tag stored in the record, the REFUSED spelling shared with
+   IMAS-Fortran and IMAS-Cpp, and the warning identifier callers filter on.
+ */
+struct imas_mex_operation_description {
+    enum imas_mex_operation operation;
+    const char * name;
+    const char * label;
+    const char * warningId;
+};
+
+static const struct imas_mex_operation_description operationDescriptions[] = {
+    {IMAS_MEX_READ_OPERATION,   "read",   "REFUSED READ",   "IMAS:read:refused"},
+    {IMAS_MEX_WRITE_OPERATION,  "write",  "REFUSED WRITE",  "IMAS:write:refused"},
+    {IMAS_MEX_DELETE_OPERATION, "delete", "REFUSED DELETE", "IMAS:delete:refused"}
+};
+
+static const size_t operationCount =
+    sizeof(operationDescriptions) / sizeof(operationDescriptions[0]);
+
+static const struct imas_mex_operation_description * describeOperation(
+    enum imas_mex_operation operation)
+{
+    size_t index;
+
+    for (index = 0; index < operationCount; index++)
+        if (operationDescriptions[index].operation == operation)
+            return &operationDescriptions[index];
+    return &operationDescriptions[0];
+}
+
+int operationFromName(const char * name, enum imas_mex_operation * operation)
+{
+    size_t index;
+
+    for (index = 0; index < operationCount; index++)
+        if (strcmp(operationDescriptions[index].name, name) == 0) {
+            *operation = operationDescriptions[index].operation;
+            return 1;
+        }
+    return 0;
+}
+
+static void addSkippedPath(al_status_t status, enum imas_mex_operation operation,
+                           const char * path)
+{
+    struct imas_mex_skipped_path * resizedPaths;
+    struct imas_mex_skipped_path * skippedPath;
+
+    if (skippedPathCount == skippedPathCapacity) {
+        int newCapacity = skippedPathCapacity == 0 ? 8 : skippedPathCapacity * 2;
+        resizedPaths = realloc(skippedPaths,
+            newCapacity * sizeof(struct imas_mex_skipped_path));
+        if (resizedPaths == NULL)
+            mexErrMsgIdAndTxt("IMAS:imas_mex_utils:allocation_failed",
+                              "Unable to record a refused path.");
+        skippedPaths = resizedPaths;
+        skippedPathCapacity = newCapacity;
+    }
+
+    skippedPath = &skippedPaths[skippedPathCount];
+    skippedPath->operation = duplicateString(describeOperation(operation)->name);
+    skippedPath->path = duplicateString(path);
+    skippedPath->message = duplicateString(status.message);
+    skippedPath->code = status.code;
+    skippedPathCount++;
+}
+
+int tolerateRefusal(al_status_t * status, enum imas_mex_operation operation,
+                    const char * path)
+{
+    return tolerateRefusalWithConsequence(status, operation, path, NULL);
+}
+
+int tolerateRefusalWithConsequence(al_status_t * status,
+                                   enum imas_mex_operation operation,
+                                   const char * path,
+                                   const char * consequence)
+{
+    const struct imas_mex_operation_description * description;
+
+    if (status->code < IMAS_MEX_REFUSAL_BAND_MIN ||
+        status->code > IMAS_MEX_REFUSAL_BAND_MAX)
+        return 0;
+
+    addSkippedPath(*status, operation, path);
+    description = describeOperation(operation);
+
+    if (consequence == NULL)
+        mexWarnMsgIdAndTxt(description->warningId, "%s: %s (status %d): %s",
+                           description->label, path, status->code,
+                           status->message);
+    else
+        mexWarnMsgIdAndTxt(description->warningId, "%s: %s (status %d): %s; %s",
+                           description->label, path, status->code,
+                           status->message, consequence);
+
+    /* The traversal carries on from a clean status; the accumulating
+       error-message buffer is deliberately left untouched. */
+    status->code = 0;
+    status->message[0] = '\0';
+    return 1;
+}
+
+int getSkippedPathCount(void)
+{
+    return skippedPathCount;
+}
+
+mxArray * getSkippedPaths(void)
+{
+    const char * fieldNames[] = {"operation", "path", "message", "code"};
+    mxArray * paths;
+    int index;
+
+    if (skippedPathCount == 0)
+        paths = mxCreateStructMatrix(0, 0, 4, fieldNames);
+    else
+        paths = mxCreateStructMatrix(skippedPathCount, 1, 4, fieldNames);
+
+    for (index = 0; index < skippedPathCount; index++) {
+        mxSetField(paths, index, "operation", mxCreateString(skippedPaths[index].operation));
+        mxSetField(paths, index, "path", mxCreateString(skippedPaths[index].path));
+        mxSetField(paths, index, "message", mxCreateString(skippedPaths[index].message));
+        mxSetField(paths, index, "code", mxCreateDoubleScalar((double) skippedPaths[index].code));
+    }
+
+    return paths;
 }
 
 /**

@@ -363,11 +363,14 @@ set( TARGETS
   imas_deserialize
   imas_get_backendID
   imas_get_mex_params
+  imas_get_skipped_path_count
+  imas_get_skipped_paths
   imas_open
   imas_open_env
   imas_open_env_backend
   imas_serialize
   imas_set_mex_params
+  imas_test_inject_skipped_path
   imas_build_uri_from_legacy_parameters
   imas_list_all_occurrences
   imas_partial_get

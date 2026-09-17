@@ -185,8 +185,9 @@ void mexFunction(int nlhs, mxArray *plhs[],
   /* free now as name uses the same memory */
   free(IDSpathcopy);
 
-  /* Clean-up previous errors */
+  /* Clean-up previous errors and the previous operation's skipped paths */
   resetErrMsgIdAndTxt();
+  resetSkippedPaths();
   /* Call function */
   al_status_t err = ids_get_sample(idx, IDSpath, &amp;plhs[0], tmin, tmax, dtime, csize, interpmode);
   if (err.code &lt; 0 )

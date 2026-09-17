@@ -25,3 +25,7 @@ IDS API
 .. mat:autofunction:: ids_isdefined()
 
 .. mat:autofunction:: ids_validate()
+
+.. mat:autofunction:: imas_get_skipped_paths()
+
+.. mat:autofunction:: imas_get_skipped_path_count()

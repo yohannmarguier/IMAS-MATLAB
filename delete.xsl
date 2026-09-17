@@ -32,6 +32,7 @@
     <xsl:otherwise>
       fieldPath = "<xsl:value-of select="@path"/>";
       status = al_delete_data(ctx, fieldPath);
+      if (status.code &lt; 0) tolerateRefusal(&amp;status, IMAS_MEX_DELETE_OPERATION, fieldPath);
       /* Error handling */
       if (status.code &lt; 0) {
       addIdsPathInfoToErrMsg("\n ... in field <xsl:value-of select="@path"/>",0);

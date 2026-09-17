@@ -53,6 +53,9 @@
 	aosArraySize = 0; <!-- Create an empty dynamic AOS for time-independent IDSs -->
 	}
       </xsl:if>
+      if (status.code &lt; 0 &amp;&amp; tolerateRefusalWithConsequence(&amp;status, IMAS_MEX_READ_OPERATION, field.fieldPath, "array of structures was set to empty")) {
+	aosArraySize = 0; <!-- aosCtx is left alone so a context the refused open had already allocated is still ended below -->
+      }
       if (status.code >= 0) status = begin_dataTree_array_read("<xsl:value-of select="@name"/>", aosArraySize);
       for (int i=0; i&lt;aosArraySize; i++) {
       if (status.code >= 0) status = iterate_dataTree_array(i);
@@ -110,6 +113,8 @@
 	status = mxArray_default_value(field.datatype, field.dim, &amp;data);
 	}
       </xsl:if>
+      if (status.code &lt; 0 &amp;&amp; tolerateRefusal(&amp;status, IMAS_MEX_READ_OPERATION, field.fieldPath))
+	status = mxArray_default_value(field.datatype, field.dim, &amp;data);
       if (status.code >= 0) put_data_in_dataTree("<xsl:value-of select="@name"/>", data);
       /* Error handling */
       if (status.code &lt; 0) {

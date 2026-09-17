@@ -1,6 +1,6 @@
 # Repository Guidelines
 
-Any changes should be also reflected in CLAUDEco.md
+Any changes should be also reflected in CLAUDE.md
 
 ## Project Structure & Module Organization
 
@@ -28,6 +28,21 @@ Follow the surrounding file's formatting: MATLAB uses two-space indentation, `fu
 ## Testing Guidelines
 
 Add coverage in the relevant `matlab.unittest.TestCase` class, using descriptive `test...` method names. Exercise both HDF5 and MDSplus only when the change is backend-specific; HDF5 is sufficient for the standard local path. Run the narrow MATLAB suite while iterating when the built libraries are on the path, then run CTest before opening a PR. Update examples or docs when public MATLAB behavior changes.
+
+`imas_utils_unit_tests` is registered as its own backend-independent CTest suite; it runs even when neither HDF5 nor MDSplus is configured.
+
+## Skipped-path policy
+
+The shared MEX utility library owns the process-global skipped-path record and
+the refusal-band (`-1000..-1099`) tolerance chokepoint. Keep the record
+observable only through `imas_get_skipped_paths` and
+`imas_get_skipped_path_count`. Generated traversal routes only leaf data seams
+and array-of-structures opens through the chokepoint: a tolerated read leaf
+receives its default value, a tolerated read array open becomes empty, a
+tolerated write leaf is omitted, a tolerated write array open skips its
+subtree, and a tolerated delete leaf is omitted. Root read, write, and delete
+generators clear the record on entry; an `ids_put` clears once before its
+internal delete phase so both delete and write skips remain in one record.
 
 ## Commit & Pull Request Guidelines
 

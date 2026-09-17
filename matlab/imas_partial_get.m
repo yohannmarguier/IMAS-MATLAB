@@ -11,6 +11,10 @@
 %
 % Empty fields within the IDS in the Data Entry are returned with the
 % default values indicated in :ref:`Default values`.
+% A read can be partial when the multiversion shim refuses an individual
+% field: the returned IDS retains its normal shape and uses that field's
+% default value. Inspect imas_get_skipped_paths or
+% imas_get_skipped_path_count after the call for the refused paths.
 % 
 % Args:
 %   expIdx:     Data entry context created with

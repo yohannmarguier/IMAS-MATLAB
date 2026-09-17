@@ -5,6 +5,10 @@
 % This method fetches the IDS object with all constant/static data filled.
 % The dynamic data is interpolated on the requested time slice. This means
 % that the size of the time dimension in the returned data is 1.
+% A read can be partial when the multiversion shim refuses an individual
+% field: the returned IDS retains its normal shape and uses that field's
+% default value. Inspect imas_get_skipped_paths or
+% imas_get_skipped_path_count after the call for the refused paths.
 % 
 % Args:
 %   expIdx:     Data entry context created with

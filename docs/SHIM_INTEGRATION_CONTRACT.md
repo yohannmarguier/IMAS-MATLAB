@@ -180,6 +180,13 @@ the refusal field-by-field the way the read path already does via
 `al_get_policy`. This is a documented limitation of the shim, not a defect to
 chase — see README.md's "Scope and limitations".
 
+The generated MATLAB `put`/`put_slice` routines do tolerate a refusal
+field-by-field, at a leaf write and at an array-of-structures open: they warn,
+record each skipped HLI-DD path for `imas_get_skipped_paths`, and continue the
+traversal. That changes which fields survive, not the torn-write hazard — there
+is no rollback in MATLAB either, so a caller must treat a successful return
+with skipped paths as a partial put rather than an all-or-nothing write.
+
 **A refusal here can also crash the process, not just fail the call**, in one
 specific structural case unrelated to your own writes: IMAS-Core's own
 internal plugin machinery (`AccessLayerPluginManager::write_field` and
@@ -198,7 +205,7 @@ Same registration gate as read/write. When registered:
 | `path` resolves to one stored path (identity, `renamed`, `moved`) | One `al_delete_data` call to Core with that stored spelling. |
 | `path` resolves to several candidates (`merged`/`split`) | **Every candidate is deleted**, unconditionally, with **no presence probe** beforehand. This is the opposite answer from write's precedence-1-only rule, and it is deliberate (ADR 0017): a write asserts a value it must not fabricate into an assumed-equivalent slot, but a delete asserts an absence, and leaving a stale candidate behind would let the read path's own fallback serve it as live data after a delete the caller was told succeeded. |
 | One or more candidates fail | **All candidates are still attempted** (no early exit); the **first** nonzero status is what's returned to the caller, after every candidate has been tried. An absent candidate is indistinguishable from a genuine backend failure at the ABI (`al_delete_data` has no not-found outcome), so a missing candidate can *look like* a failure even when the delete "worked" as well as it could. |
-| A delete refuses | One `UNMAPPABLE` `DELETE` loss records the caller's complete HLI-DD path before the ordinary refusal returns. |
+| A delete refuses | One `UNMAPPABLE` `DELETE` loss records the caller's complete HLI-DD path before the refusal reaches the HLI. The generated MATLAB traversal warns, records the skipped path, and continues at this leaf seam. |
 | A candidate plan completes | One `POTENTIALLY_LOSSY` `DELETE` loss records each stored candidate after all candidates have been attempted, including when the first failure is returned. |
 | `path` names a structure (not a leaf) whose subtree contains an **escaping rule** — a rule at or under `path` with at least one stored-side target outside the resolved stored subtree | **Refused**, before any candidate is touched. A leaf delete is always trivial (never refuses on this basis). On the shipped artifact this refuses `time_slice/boundary_separatrix` from a DD3 HLI and `time_slice/boundary` from a DD4 HLI, but allows `time_slice`, `time_slice/constraints`, and every leaf. |
 | `path` is empty | Forwards **unchanged**, unconditionally — this is IMAS-Core's own "delete the whole DATAOBJECT" contract. It is the *only* legitimate way to migrate a mismatched occurrence: afterwards the occurrence is unstamped, so ADR 0007 makes the next open treat it as matching the HLI, and it can be written fresh. It is also the sole exception to "any delete touching the stamp refuses" — because it removes the data too, nothing is left to misread. |

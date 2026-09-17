@@ -22,6 +22,13 @@ add_test( NAME al-mex-test
       -batch "addpath ${LIB_FOLDER} ${M_FOLDER}; res = runtests('imas_unit_tests');exit(~all([res.Passed]))"
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+add_test( NAME al-utils-unit-test
+  COMMAND
+    ${Matlab_MAIN_PROGRAM}
+      -nodisplay
+      -batch "addpath ${LIB_FOLDER} ${M_FOLDER}; res = runtests('imas_utils_unit_tests');exit(~all([res.Passed]))"
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
 # Note: added ids_path for backward compatibility with IMAS-Core<5.6
 set( MATLAB_ENV "IMAS_AL_DISABLE_VALIDATE=1;IMAS_AL_DISABLE_OBSOLESCENT_WARNING=1;ids_path=${MDSPLUS_MODEL_DIR};MDSPLUS_MODELS_PATH=${MDSPLUS_MODEL_DIR}" )
 list( APPEND MATLAB_ENV ${AL_MATLAB_SHIM_TEST_ENVIRONMENT} )
@@ -34,7 +41,7 @@ if( AL_BACKEND_HDF5 )
   list( APPEND MATLAB_ENV "LD_PRELOAD=${PRELOAD_LIBS}" )
 endif()
 
-set_tests_properties( al-mex-test PROPERTIES
+set_tests_properties( al-mex-test al-utils-unit-test PROPERTIES
   TIMEOUT 3600
   ENVIRONMENT "${MATLAB_ENV}"
 )

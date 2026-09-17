@@ -36,6 +36,8 @@ classdef imas_utils_unit_tests < matlab.unittest.TestCase
     end
 
     function testRefusalPolicyTruthTable(TestCase)
+      import matlab.unittest.constraints.IssuesWarnings
+
       operations = {'read', 'write', 'delete'};
       statuses = [0, -1, -2, -3, -4, -1000, -1050, -1099, -999, -1100];
 
@@ -46,7 +48,10 @@ classdef imas_utils_unit_tests < matlab.unittest.TestCase
           isRefusal = status >= -1099 && status <= -1000;
 
           if (isRefusal)
-            TestCase.verifyWarning(call, ['IMAS:' operation ':refused']);
+            % One warning, that identifier, and nothing else: a refusal that
+            % warned twice would announce one skipped path as two.
+            TestCase.verifyThat(call, IssuesWarnings({['IMAS:' operation ':refused']}, ...
+              'RespectingSet', true, 'RespectingCount', true));
           elseif (status < 0)
             TestCase.verifyError(call, 'IMAS:imas_test_inject_skipped_path:internal_error');
           else

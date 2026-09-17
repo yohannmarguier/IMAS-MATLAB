@@ -249,7 +249,7 @@ static char * duplicateString(const char * string)
 
     duplicate = malloc(length);
     if (duplicate == NULL)
-        mexErrMsgIdAndTxt("IMAS:skipped_paths:allocation_failed",
+        mexErrMsgIdAndTxt("IMAS:imas_mex_utils:allocation_failed",
                           "Unable to record a refused path.");
     memcpy(duplicate, string, length);
     return duplicate;
@@ -325,7 +325,7 @@ static void addSkippedPath(al_status_t status, enum imas_mex_operation operation
         resizedPaths = realloc(skippedPaths,
             newCapacity * sizeof(struct imas_mex_skipped_path));
         if (resizedPaths == NULL)
-            mexErrMsgIdAndTxt("IMAS:skipped_paths:allocation_failed",
+            mexErrMsgIdAndTxt("IMAS:imas_mex_utils:allocation_failed",
                               "Unable to record a refused path.");
         skippedPaths = resizedPaths;
         skippedPathCapacity = newCapacity;

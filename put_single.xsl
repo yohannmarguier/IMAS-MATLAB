@@ -60,8 +60,7 @@
         if (status.code &lt; 0 &amp;&amp; tolerateRefusalWithConsequence(status, IMAS_MEX_WRITE_OPERATION, field.fieldPath, "array of structures subtree was not written")) {
           status.code = 0;
           status.message[0] = '\0';
-          aosArraySize = 0;
-          aosCtx = 0;
+          aosArraySize = 0; <!-- aosCtx is left alone so a context the refused open had already allocated is still ended below -->
         }
 
         if(aosCtx&gt;0 &amp;&amp; aosArraySize&gt;0 &amp;&amp; hliAosArraySize == 0)

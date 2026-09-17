@@ -56,8 +56,7 @@
       if (status.code &lt; 0 &amp;&amp; tolerateRefusalWithConsequence(status, IMAS_MEX_READ_OPERATION, field.fieldPath, "array of structures was set to empty")) {
 	status.code = 0;
 	status.message[0] = '\0';
-	aosArraySize = 0;
-	aosCtx = 0;
+	aosArraySize = 0; <!-- aosCtx is left alone so a context the refused open had already allocated is still ended below -->
       }
       if (status.code >= 0) status = begin_dataTree_array_read("<xsl:value-of select="@name"/>", aosArraySize);
       for (int i=0; i&lt;aosArraySize; i++) {
